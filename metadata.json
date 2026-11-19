@@ -1,0 +1,8 @@
+{
+  "name": "Beasty — Analog Beast VST3 Synthesizer",
+  "description": "High-end analog synthesizer UI with animated Beasty mascot, 3D waveform visualizer, Beasty-style Web Audio engine, 200 presets, and mod matrix.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

@@ -1,0 +1,59 @@
+cmake_minimum_required(VERSION 3.22)
+project(MiniSynth VERSION 0.1.0)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+# JUCE 8: either `git clone https://github.com/juce-framework/JUCE.git` next to this folder,
+# or pass -DJUCE_DIR=/path/to/JUCE
+set(JUCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../JUCE" CACHE PATH "Path to JUCE 8")
+add_subdirectory(${JUCE_DIR} JUCE)
+
+juce_add_plugin(MiniSynth
+    COMPANY_NAME "bbtech"
+    PLUGIN_MANUFACTURER_CODE Bbtc
+    PLUGIN_CODE Mnsy
+    FORMATS VST3 Standalone AU
+    PRODUCT_NAME "MiniSynth"
+    IS_SYNTH TRUE
+    NEEDS_MIDI_INPUT TRUE
+    NEEDS_WEB_BROWSER TRUE
+    NEEDS_WEBVIEW2 TRUE            # Windows only: statically links WebView2 (needs the WebView2 NuGet package, see README)
+    COPY_PLUGIN_AFTER_BUILD FALSE)
+
+# Single-file UI (ui/index.html, produced by tools/build_ui.py) embedded as BinaryData.
+juce_add_binary_data(MiniSynthUI SOURCES ui/index.html)
+
+target_sources(MiniSynth PRIVATE
+    Source/PluginProcessor.cpp
+    Source/PluginEditor.cpp)
+
+target_compile_definitions(MiniSynth PUBLIC
+    JUCE_WEB_BROWSER=1
+    JUCE_USE_CURL=0
+    JUCE_VST3_CAN_REPLACE_VST2=0
+    JUCE_USE_WIN_WEBVIEW2_WITH_STATIC_LINKING=1)
+
+target_include_directories(MiniSynth PRIVATE Source)
+
+target_link_libraries(MiniSynth
+    PRIVATE
+        MiniSynthUI
+        juce::juce_audio_utils
+        juce::juce_gui_extra
+    PUBLIC
+        juce::juce_recommended_config_flags
+        juce::juce_recommended_lto_flags
+        juce::juce_recommended_warning_flags)
+
+# Offline DSP tests (no JUCE): cmake --build . --target dsp_test && ./dsp_test
+add_executable(dsp_test EXCLUDE_FROM_ALL tests/dsp_test.cpp)
+
+# End-to-end smoke test of the real JUCE processor (parameter mapping, MIDI timing, state):
+#   cmake --build build --target plugin_smoke && ./build/plugin_smoke
+juce_add_console_app(plugin_smoke_app PRODUCT_NAME "plugin_smoke" NEEDS_WEB_BROWSER TRUE)
+set_target_properties(plugin_smoke_app PROPERTIES EXCLUDE_FROM_ALL TRUE)
+target_sources(plugin_smoke_app PRIVATE tests/plugin_smoke.cpp Source/PluginProcessor.cpp Source/PluginEditor.cpp)
+target_include_directories(plugin_smoke_app PRIVATE Source)
+target_compile_definitions(plugin_smoke_app PRIVATE JUCE_WEB_BROWSER=1 JUCE_USE_CURL=0 JUCE_USE_WIN_WEBVIEW2_WITH_STATIC_LINKING=1 JUCE_ALLOW_STATIC_NULL_VARIABLES=0)
+target_link_libraries(plugin_smoke_app PRIVATE MiniSynthUI juce::juce_audio_utils juce::juce_gui_extra juce::juce_recommended_config_flags)
